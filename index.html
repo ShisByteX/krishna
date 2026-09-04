@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divine Pixel Art - Lord Krishna</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Poppins:wght@300;500&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Starry background effect */
+        .stars {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background: transparent;
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #ffd700, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 160px 120px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: twinkle 5s infinite linear;
+            opacity: 0.3;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.2; transform: translateY(0); }
+            50% { opacity: 0.5; }
+            100% { opacity: 0.2; transform: translateY(-20px); }
+        }
+
+        h1 {
+            font-family: 'Cinzel Decorative', cursive;
+            text-shadow: 0 0 10px #ffd700, 0 0 20px #ff8c00;
+            z-index: 10;
+        }
+
+        .canvas-container {
+            position: relative;
+            z-index: 10;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            transition: all 1s ease-in-out;
+        }
+
+        .canvas-container.glow-complete {
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), 0 0 100px rgba(30, 144, 255, 0.2);
+            border-color: rgba(255, 215, 0, 0.6);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1/1;
+            background-color: transparent;
+        }
+
+        .btn-draw {
+            z-index: 10;
+            background: linear-gradient(45deg, #FF8C00, #FFD700);
+            color: #1a0b2e;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-draw:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+        }
+
+        .progress-text {
+            font-family: 'Cinzel Decorative', cursive;
+            color: #ffd700;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stars"></div>
+
+    <h1 class="text-3xl md:text-5xl text-center mt-6 mb-2 tracking-wider">Divine Appearance</h1>
+    <p class="text-sm md:text-md text-gray-300 z-10 text-center mb-4 italic">Materializing pixel by pixel...</p>
+
+    <div class="canvas-container" id="canvasContainer">
+        <!-- Main visible canvas -->
+        <canvas id="krishnaCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div class="flex flex-col items-center z-10 gap-4 mb-8">
+        <p id="statusText" class="progress-text text-xl h-8">Summoning colors...</p>
+        <button id="drawBtn" class="btn-draw px-8 py-3 rounded-full text-lg cursor-pointer">
+            Draw Again
+        </button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('krishnaCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const drawBtn = document.getElementById('drawBtn');
+        const statusText = document.getElementById('statusText');
+        const canvasContainer = document.getElementById('canvasContainer');
+
+        // We use a smaller offscreen canvas to generate the "pixels"
+        // 125x125 grid means 15,625 pixels to draw
+        const GRID_SIZE = 125; 
+        let pixels = [];
+        let animationId;
+        let isDrawing = false;
+
+        // Create Offscreen Canvas for rendering the vector art
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = GRID_SIZE;
+        offCanvas.height = GRID_SIZE;
+        const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+        // Colors
+        const C_SKIN = "#1E90FF"; // Deep Blue Skin
+        const C_GOLD = "#FFD700";
+        const C_CLOTH = "#FF8C00"; // Saffron/Orange
+        const C_FEATHER_BG = "#006400"; // Dark Green
+        const C_FEATHER_MID = "#00CED1"; // Cyan
+        const C_FEATHER_CENTER = "#00008B"; // Dark blue
+        const C_LIP = "#FF69B4"; // Pink
+        const C_AURA_IN = "rgba(255, 255, 200, 1)";
+        const C_AURA_OUT = "rgba(255, 140, 0, 0)";
+
+        function drawVectorKrishna(context) {
+            context.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+
+            // Scale drawing context to fit the GRID_SIZE perfectly
+            // We'll design on a 200x200 coordinate system and scale it down
+            context.save();
+            context.scale(GRID_SIZE / 200, GRID_SIZE / 200);
+
+            // 1. Divine Aura (Glowing background)
+            let auraGradient = context.createRadialGradient(100, 100, 20, 100, 100, 90);
+            auraGradient.addColorStop(0, C_AURA_IN);
+            auraGradient.addColorStop(0.5, "rgba(255, 215, 0, 0.6)");
+            auraGradient.addColorStop(1, C_AURA_OUT);
+            context.fillStyle = auraGradient;
+            context.beginPath(); context.arc(100, 100, 95, 0, Math.PI * 2); context.fill();
+
+            // Divine Dust/Stars in Aura
+            for (let i = 0; i < 150; i++) {
+                context.fillStyle = Math.random() > 0.5 ? '#FFF' : C_GOLD;
+                context.beginPath();
+                context.arc(
+                    100 + (Math.random() - 0.5) * 180, 
+                    100 + (Math.random() - 0.5) * 180, 
+                    Math.random() * 1.5, 0, Math.PI*2
+                );
+                context.fill();
+            }
+
+            // 2. Black Hair (Flowing behind shoulders)
+            context.fillStyle = "#0a0a1a";
+            context.beginPath();
+            context.moveTo(60, 120);
+            context.quadraticCurveTo(30, 150, 40, 180);
+            context.lineTo(160, 180);
+            context.quadraticCurveTo(170, 150, 140, 120);
+            context.arc(100, 90, 45, 0, Math.PI * 2);
+            context.fill();
+
+            // 3. Shoulders and Garments (Pitambar - Yellow clothes)
+            context.fillStyle = C_CLOTH;
+            context.beginPath();
+            context.moveTo(60, 140);
+            context.quadraticCurveTo(100, 170, 140, 140);
+            context.lineTo(180, 200);
+            context.lineTo(20, 200);
+            context.fill();
+
+            // Garland (Mala) Base
+            context.strokeStyle = "#FFF";
+            context.lineWidth = 4;
+            context.beginPath();
+            context.arc(100, 135, 35, 0, Math.PI, false);
+            context.stroke();
+
+            // 4. Face Base
+            context.fillStyle = C_SKIN;
+            context.beginPath();
+            // Oval face
+            context.ellipse(100, 110, 32, 40, 0, 0, Math.PI * 2);
+            context.fill();
+            
+            // Neck
+            context.fillRect(90, 140, 20, 15);
+
+            // 5. Crown (Mukut)
+            context.fillStyle = C_GOLD;
+            context.beginPath();
+            context.moveTo(65, 85);
+            context.lineTo(60, 40);
+            context.lineTo(80, 60);
+            context.lineTo(100, 25);
+            context.lineTo(120, 60);
+            context.lineTo(140, 40);
+            context.lineTo(135, 85);
+            context.quadraticCurveTo(100, 95, 65, 85);
+            context.fill();
+
+            // Crown Jewels
+            context.fillStyle = "#DC143C"; // Ruby
+            context.beginPath(); context.arc(100, 75, 4, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.arc(80, 70, 3, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.arc(120, 70, 3, 0, Math.PI*2); context.fill();
+
+            // 6. Peacock Feather (Mor Pankh)
+            context.save();
+            context.translate(65, 35);
+            context.rotate(-Math.PI / 4);
+            
+            // Outer green
+            context.fillStyle = C_FEATHER_BG;
+            context.beginPath(); context.ellipse(0, 0, 15, 30, 0, 0, Math.PI*2); context.fill();
+            
+            // Mid cyan
+            context.fillStyle = C_FEATHER_MID;
+            context.beginPath(); context.ellipse(0, 8, 9, 18, 0, 0, Math.PI*2); context.fill();
+            
+            // Inner dark blue
+            context.fillStyle = C_FEATHER_CENTER;
+            context.beginPath(); context.ellipse(0, 12, 5, 10, 0, 0, Math.PI*2); context.fill();
+            
+            // Eye center
+            context.fillStyle = "#FFD700";
+            context.beginPath(); context.arc(0, 15, 2, 0, Math.PI*2); context.fill();
+            
+            context.restore();
+
+            // 7. Facial Features
+            // Tilak (U shape)
+            context.strokeStyle = "#FFFFF0";
+            context.lineWidth = 1.5;
+            context.beginPath();
+            context.moveTo(93, 85);
+            context.lineTo(93, 100);
+            context.arc(100, 100, 7, Math.PI, 0, true);
+            context.lineTo(107, 85);
+            context.stroke();
+            // Red dot
+            context.fillStyle = "#DC143C";
+            context.beginPath(); context.arc(100, 102, 2.5, 0, Math.PI*2); context.fill();
+
+            // Eyebrows
+            context.strokeStyle = "#000";
+            context.lineWidth = 2;
+            context.beginPath(); context.quadraticCurveTo(90, 105, 80, 108); context.stroke();
+            context.beginPath(); context.quadraticCurveTo(110, 105, 120, 108); context.stroke();
+
+            // Eyes (Lotus shaped)
+            context.fillStyle = "#FFF";
+            context.beginPath(); context.ellipse(85, 114, 8, 4, -0.1, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.ellipse(115, 114, 8, 4, 0.1, 0, Math.PI*2); context.fill();
+            // Pupils
+            context.fillStyle = "#000";
+            context.beginPath(); context.arc(85, 114, 3.5, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.arc(115, 114, 3.5, 0, Math.PI*2); context.fill();
+
+            // Nose
+            context.strokeStyle = "rgba(0,0,0,0.3)";
+            context.beginPath(); context.moveTo(100, 115); context.lineTo(100, 128); context.stroke();
+
+            // Lips
+            context.fillStyle = C_LIP;
+            context.beginPath(); context.ellipse(100, 136, 6, 3, 0, 0, Math.PI*2); context.fill();
+            // Smile line
+            context.strokeStyle = "#8B0000";
+            context.lineWidth = 1;
+            context.beginPath(); context.quadraticCurveTo(100, 139, 108, 134); context.stroke();
+            context.beginPath(); context.quadraticCurveTo(100, 139, 92, 134); context.stroke();
+
+            // 8. Flute (Bansuri)
+            context.save();
+            context.translate(100, 142);
+            context.rotate(Math.PI / 10);
+            
+            // Flute body
+            context.fillStyle = C_GOLD;
+            context.fillRect(0, 0, 90, 8);
+            
+            // Flute details (holes and strings)
+            context.fillStyle = "#000";
+            context.beginPath(); context.arc(30, 4, 2, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.arc(45, 4, 2, 0, Math.PI*2); context.fill();
+            context.beginPath(); context.arc(60, 4, 2, 0, Math.PI*2); context.fill();
+            
+            // Hanging tassel from flute
+            context.strokeStyle = "#DC143C";
+            context.lineWidth = 2;
+            context.beginPath(); context.moveTo(75, 8); context.lineTo(75, 30); context.stroke();
+            context.fillStyle = "#FFD700";
+            context.beginPath(); context.arc(75, 30, 4, 0, Math.PI*2); context.fill();
+
+            context.restore();
+
+            // 9. Garland Details (Flowers overlay)
+            for(let i=0; i <= Math.PI; i += 0.2) {
+                let gx = 100 + Math.cos(i) * 35;
+                let gy = 135 + Math.sin(i) * 35;
+                context.fillStyle = (i % 0.4 < 0.2) ? "#FF69B4" : "#FFF";
+                context.beginPath(); context.arc(gx, gy, 4, 0, Math.PI*2); context.fill();
+            }
+
+            context.restore();
+        }
+
+        function extractPixels() {
+            // Draw vector to offscreen canvas
+            drawVectorKrishna(offCtx);
+            
+            // Extract Image Data
+            const imgData = offCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
+            pixels = [];
+
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const i = (y * GRID_SIZE + x) * 4;
+                    const alpha = imgData[i + 3];
+                    
+                    if (alpha > 10) { // If pixel is not entirely transparent
+                        pixels.push({
+                            x: x,
+                            y: y,
+                            color: `rgba(${imgData[i]}, ${imgData[i+1]}, ${imgData[i+2]}, ${alpha / 255})`
+                        });
+                    }
+                }
+            }
+
+            // Shuffle array using Fisher-Yates for the "divine materialization" effect
+            for (let i = pixels.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pixels[i], pixels[j]] = [pixels[j], pixels[i]];
+            }
+        }
+
+        function startAnimation() {
+            if (isDrawing) return;
+            isDrawing = true;
+            
+            canvasContainer.classList.remove('glow-complete');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            extractPixels();
+            
+            // Fast drawing: pop many pixels per frame
+            const pixelsPerFrame = Math.ceil(pixels.length / 150); // Finish in ~150 frames (2.5 seconds at 60fps)
+            const scaleX = canvas.width / GRID_SIZE;
+            const scaleY = canvas.height / GRID_SIZE;
+
+            statusText.innerText = "Materializing...";
+            drawBtn.disabled = true;
+            drawBtn.style.opacity = '0.5';
+
+            function renderLoop() {
+                for (let i = 0; i < pixelsPerFrame; i++) {
+                    if (pixels.length === 0) {
+                        finishAnimation();
+                        return;
+                    }
+                    
+                    const p = pixels.pop();
+                    ctx.fillStyle = p.color;
+                    // Draw a slightly larger rectangle than scale to avoid grid gap artifacts
+                    ctx.fillRect(Math.floor(p.x * scaleX), Math.floor(p.y * scaleY), Math.ceil(scaleX), Math.ceil(scaleY));
+                }
+                animationId = requestAnimationFrame(renderLoop);
+            }
+
+            renderLoop();
+        }
+
+        function finishAnimation() {
+            isDrawing = false;
+            statusText.innerText = "Jai Shree Krishna";
+            drawBtn.disabled = false;
+            drawBtn.style.opacity = '1';
+            
+            // Trigger a divine glow effect on the container
+            canvasContainer.classList.add('glow-complete');
+            
+            // Add a white flash overlay that fades out
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            setTimeout(() => {
+                // Remove the flash slightly by redrawing the last bits or just leaving it ethereal
+                // A true fix would be redrawing the whole image instantly, but the overlay adds a nice 'bloom'
+            }, 100);
+        }
+
+        // Event Listeners
+        drawBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            startAnimation();
+        });
+
+        // Start automatically on load
+        window.onload = () => {
+            setTimeout(startAnimation, 500);
+        };
+
+    </script>
+</body>
+</html>
